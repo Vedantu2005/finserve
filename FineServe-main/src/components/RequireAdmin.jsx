@@ -1,0 +1,10 @@
+import React from 'react'
+import { Navigate } from 'react-router-dom'
+
+export default function RequireAdmin({ children }) {
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('adminAuth') === 'true'
+  if (!isAdmin) {
+    return <Navigate to="/admin" replace />
+  }
+  return children
+}
