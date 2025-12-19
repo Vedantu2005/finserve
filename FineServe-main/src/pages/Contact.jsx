@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react'; // Added useRef
+import React, { useState, useRef } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
-import emailjs from '@emailjs/browser'; // Import EmailJS
+import emailjs from '@emailjs/browser';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { addContactSubmission } from '../firebase';
 
 const ContactPage = () => {
-    const form = useRef(); // Create a reference to the form
+    const form = useRef();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -18,35 +19,43 @@ const ContactPage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Replace these with your actual EmailJS IDs
-        const SERVICE_ID = 'YOUR_SERVICE_ID';
-        const TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
-        const PUBLIC_KEY = 'YOUR_PUBLIC_KEY';
+        try {
+            // 1. Save to Admin Dashboard (Firebase)
+            await addContactSubmission(formData);
 
-        emailjs.sendForm(SERVICE_ID, TEMPLATE_ID, form.current, PUBLIC_KEY)
-            .then((result) => {
-                console.log('Email successfully sent!', result.text);
-                alert('Thank you! Your message has been sent.');
-                setFormData({ name: '', email: '', subject: '', message: '' }); // Clear form
-            })
-            .catch((error) => {
-                console.error('Email failed to send:', error.text);
-                alert('Oops! Something went wrong. Please try again later.');
-            })
-            .finally(() => {
-                setIsSubmitting(false);
-            });
+            // 2. Send Email using Environment Variables
+            // These values are loaded from your .env file
+            const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+            const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+            const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+            if (serviceId && templateId && publicKey) {
+                await emailjs.sendForm(serviceId, templateId, form.current, publicKey);
+                console.log('Email sent successfully');
+            } else {
+                console.warn('EmailJS keys are missing in .env file. Email not sent.');
+            }
+            
+            alert('✅ Thank you! Your message has been sent.');
+            setFormData({ name: '', email: '', subject: '', message: '' }); // Clear form
+
+        } catch (error) {
+            console.error('Error:', error);
+            // Even if EmailJS fails, if Firebase worked, we consider it a partial success
+            alert('Message saved, but we had trouble sending the email notification.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
         <>
             <Navbar />
             <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
-                {/* --- Hero Section --- */}
                 <div className="bg-blue-950 text-white py-44 px-4 sm:px-6 lg:px-8">
                     <div className="max-w-7xl mx-auto text-center">
                         <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Get in Touch</h1>
@@ -56,11 +65,8 @@ const ContactPage = () => {
                     </div>
                 </div>
 
-                {/* --- Main Content Area --- */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 mb-20">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        
-                        {/* Left Column: Contact Info */}
                         <div className="bg-white rounded-2xl shadow-xl p-8 lg:col-span-1 border border-gray-100 h-fit">
                             <h3 className="text-2xl font-bold text-gray-900 mb-6">Contact Info</h3>
                             <div className="space-y-6">
@@ -76,20 +82,15 @@ const ContactPage = () => {
                                     <div><p className="font-semibold text-gray-900">By Appointment Only</p></div>
                                 </div>
                                 <div className="flex items-start space-x-4">
-                                    <div className="bg-blue-50 p-3 rounded-lg text-blue-600">
-                                        <MapPin size={24} />
-                                    </div>
+                                    <div className="bg-blue-50 p-3 rounded-lg text-blue-600"><MapPin size={24} /></div>
                                     <div>
                                         <p className="font-semibold text-gray-900">Visit Us</p>
-                                        <p className="text-gray-600 text-sm">
-                                            Salt Lake City, Utah
-                                        </p>
+                                        <p className="text-gray-600 text-sm">Salt Lake City, Utah</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Right Column: Contact Form */}
                         <div className="bg-white rounded-2xl shadow-xl p-8 lg:col-span-2 border border-gray-100">
                             <h3 className="text-2xl font-bold text-gray-900 mb-2">Send us a Message</h3>
                             <p className="text-gray-500 mb-8">Fill out the form below and we'll get back to you within 24 hours.</p>
@@ -100,7 +101,7 @@ const ContactPage = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                                         <input
                                             type="text"
-                                            name="name" // Matches {{name}} in EmailJS template
+                                            name="name"
                                             required
                                             className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:bg-white outline-none transition-all"
                                             placeholder="John Doe"
@@ -112,7 +113,7 @@ const ContactPage = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                                         <input
                                             type="email"
-                                            name="email" // Matches {{email}} in EmailJS template
+                                            name="email"
                                             required
                                             className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:bg-white outline-none transition-all"
                                             placeholder="john@company.com"
@@ -125,7 +126,7 @@ const ContactPage = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                                     <select
-                                        name="subject" // Matches {{subject}} in EmailJS template
+                                        name="subject"
                                         className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 outline-none transition-all"
                                         value={formData.subject}
                                         onChange={handleChange}
@@ -141,7 +142,7 @@ const ContactPage = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
                                     <textarea
-                                        name="message" // Matches {{message}} in EmailJS template
+                                        name="message"
                                         rows="5"
                                         required
                                         className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 outline-none transition-all resize-none"

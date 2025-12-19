@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { addReferralSubmission } from '../firebase';
 
-// Component for Input Fields
-const FormInput = ({ label, placeholder, type = 'text', rows, required = true }) => (
+// Component for Input Fields (Updated to accept state props)
+const FormInput = ({ label, placeholder, type = 'text', rows, required = true, name, value, onChange }) => (
   <div className="flex flex-col space-y-1 w-full">
     <label className="font-sfpro text-gray-700 text-sm font-semibold">{label}</label>
     {rows ? (
       <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
         rows={rows}
         required={required}
@@ -14,6 +18,9 @@ const FormInput = ({ label, placeholder, type = 'text', rows, required = true })
       />
     ) : (
       <input
+        name={name}
+        value={value}
+        onChange={onChange}
         type={type}
         placeholder={placeholder}
         required={required}
@@ -25,10 +32,33 @@ const FormInput = ({ label, placeholder, type = 'text', rows, required = true })
 );
 
 // Main Component
-const App = () => {
-  const handleSubmit = (e) => {
+const ReferralForm = () => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    companyName: '',
+    email: '',
+    phone: '',
+    notes: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("✅ Form submitted successfully!");
+    setLoading(true);
+    try {
+      await addReferralSubmission(formData);
+      alert("✅ Form submitted successfully!");
+      setFormData({ fullName: '', companyName: '', email: '', phone: '', notes: '' });
+    } catch (error) {
+      console.error(error);
+      alert("Error submitting form. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,7 +69,7 @@ const App = () => {
 
           .font-sfpro {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", 
-                         "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+                      "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
           }
 
           .font-instrument {
@@ -49,7 +79,7 @@ const App = () => {
           .grid-bg {
             background-color: #ffffff;
             background-image: linear-gradient(to right, rgba(144, 202, 249, 0.15) 1px, transparent 1px),
-                              linear-gradient(to bottom, rgba(144, 202, 249, 0.15) 1px, transparent 1px);
+                           linear-gradient(to bottom, rgba(144, 202, 249, 0.15) 1px, transparent 1px);
             background-size: 40px 40px;
           }
         `}
@@ -83,10 +113,36 @@ const App = () => {
           {/* Form Fields */}
           <div className="flex flex-col md:flex-row gap-8 max-w-4xl mx-auto">
             <div className="flex-1 space-y-4">
-              <FormInput label="Full Name" placeholder="Full Name" />
-              <FormInput label="Company Name" placeholder="Company Name" />
-              <FormInput label="Email Address" placeholder="Email Address" type="email" />
-              <FormInput label="Phone Number" placeholder="Phone Number" type="tel" />
+              <FormInput 
+                label="Full Name" 
+                placeholder="Full Name" 
+                name="fullName" 
+                value={formData.fullName} 
+                onChange={handleChange} 
+              />
+              <FormInput 
+                label="Company Name" 
+                placeholder="Company Name" 
+                name="companyName" 
+                value={formData.companyName} 
+                onChange={handleChange} 
+              />
+              <FormInput 
+                label="Email Address" 
+                placeholder="Email Address" 
+                type="email" 
+                name="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+              />
+              <FormInput 
+                label="Phone Number" 
+                placeholder="Phone Number" 
+                type="tel" 
+                name="phone" 
+                value={formData.phone} 
+                onChange={handleChange} 
+              />
             </div>
 
             <div className="flex-1 flex flex-col space-y-1">
@@ -94,6 +150,9 @@ const App = () => {
                 label="Message / Referral Notes..."
                 placeholder="Your Note..."
                 rows={10}
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -102,13 +161,14 @@ const App = () => {
           <div className="mt-8">
             <button
               type="submit"
+              disabled={loading}
               className="w-full py-4 text-white text-xl font-bold rounded-xl shadow-lg transition duration-300 transform active:scale-98
-                       bg-gradient-to-r from-blue-500 to-sky-400 
-                       hover:from-blue-600 hover:to-sky-500 
-                       focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50 
-                       font-sfpro tracking-wide"
+                        bg-gradient-to-r from-blue-500 to-sky-400 
+                        hover:from-blue-600 hover:to-sky-500 
+                        focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50 
+                        font-sfpro tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Submit & Join
+              {loading ? 'Submitting...' : 'Submit & Join'}
             </button>
           </div>
         </form>
@@ -117,4 +177,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default ReferralForm;
